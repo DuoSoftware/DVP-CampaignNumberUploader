@@ -72,7 +72,7 @@ func UploadContactsToCampaignAndAttachSchedule(ctx context.Context, res http.Res
 		fmt.Println("Recovered in UploadContactsToCampaignAndAttachSchedule")
 	}
 
-	var gophers = 10
+	var gophers = 1000
 
 	fmt.Println("------------------ UploadContactsToCampaignAndAttachSchedule ------------------")
 	uploadData := UploadData{}
@@ -161,7 +161,6 @@ func SaveToDb(gopher_id int, contacts []string, uid uuid.UUID, data UploadData, 
 }
 
 //---------------------Assing Exssiting Numbers To Campaign--------------------------\\
-
 func AssingExssitingNumbersToCampaign(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -221,7 +220,6 @@ func AssingExssitingNumbersToCampaign(ctx context.Context, res http.ResponseWrit
 }
 
 //---------------------End-Assing Exssiting Numbers To Campaign--------------------------\\
-
 func GetTrackingInfo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {

@@ -40,6 +40,6 @@ func main() {
 	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/TrackerInfo", &ContextAdapter{ctx, ContextHandlerFunc(models.GetTrackingInfo)})
 	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{TrackerId}", &ContextAdapter{ctx, ContextHandlerFunc(models.TrackNumberUpload)})
 	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{CampaignId}/Numbers/Existing", &ContextAdapter{ctx, ContextHandlerFunc(models.AssingExssitingNumbersToCampaign)})
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":3268", nil)
 
 }
