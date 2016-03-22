@@ -4,6 +4,7 @@ package main
 
 import (
 	"DVP-CampaignNoUploader/models"
+	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 	"log"
 	"net/http"
@@ -35,11 +36,22 @@ func main() {
 		log.Panic(err)
 	}
 	ctx := context.WithValue(context.Background(), "db", db)
-	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload", &ContextAdapter{ctx, ContextHandlerFunc(models.UploadContactsToCampaignAndAttachSchedule)})
-	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/RemoveComplete", &ContextAdapter{ctx, ContextHandlerFunc(models.RemoveCompleteProcess)})
-	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/TrackerInfo", &ContextAdapter{ctx, ContextHandlerFunc(models.GetTrackingInfo)})
-	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{TrackerId}", &ContextAdapter{ctx, ContextHandlerFunc(models.TrackNumberUpload)})
-	http.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{CampaignId}/Numbers/Existing", &ContextAdapter{ctx, ContextHandlerFunc(models.AssingExssitingNumbersToCampaign)})
-	http.ListenAndServe(":3268", nil)
 
+	r := mux.NewRouter()
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload", &ContextAdapter{ctx, ContextHandlerFunc(models.UploadContactsToCampaignAndAttachSchedule)})
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{CampaignId}/Numbers/{CategoryID}/Assign", &ContextAdapter{ctx, ContextHandlerFunc(models.AssingExssitingNumbersToCampaign)})
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/RemoveComplete", &ContextAdapter{ctx, ContextHandlerFunc(models.RemoveCompleteProcess)})
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{TrackerId}/Tracker", &ContextAdapter{ctx, ContextHandlerFunc(models.TrackNumberUpload)})
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/Trackers/Data/Print", &ContextAdapter{ctx, ContextHandlerFunc(models.GetTrackingInfo)})
+	http.ListenAndServe(":3268", r)
+
+	/*r := mux.NewRouter()
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload/{CampaignId}/Numbers/{CategoryID}/Assign", &ContextAdapter{ctx, ContextHandlerFunc(models.AssingExssitingNumbersToCampaign)})
+	r.Handle("/DVP/API/6.0/CampaignManager/NumberUpload", &ContextAdapter{ctx, ContextHandlerFunc(models.UploadContactsToCampaignAndAttachSchedule)})
+	r.HandleFunc("/DVP/API/6.0/CampaignManager/NumberUpload/RemoveComplete", models.RemoveCompleteProcess)
+	r.HandleFunc("/DVP/API/6.0/CampaignManager/NumberUpload/{TrackerId}/Tracker", models.TrackNumberUpload)
+	r.HandleFunc("/DVP/API/6.0/CampaignManager/NumberUpload/Trackers/Data/Print", models.GetTrackingInfo)
+
+	http.ListenAndServe(":3268", r)
+	*/
 }

@@ -25,9 +25,9 @@ type UploadData struct {
 }
 
 type ExistingData struct {
-	CamScheduleId int    `json:"camScheduleId"`
-	CategoryID    int    `json:"CategoryID"`
-	ExtraData     string `json:"extraData"`
+	CamScheduleId int `json:"camScheduleId"`
+	//CategoryID    int    `json:"CategoryID"`
+	ExtraData string `json:"extraData"`
 }
 
 type TrackInfo struct {
@@ -40,18 +40,19 @@ const (
 //entries = 10
 )
 
-var TrackList = make(map[uuid.UUID][]string)
-var WorkersCount = make(map[uuid.UUID]int)
+var TrackList = make(map[uuid.UUID][]int)
+
+//var WorkersCount = make(map[uuid.UUID]int)
 var errorList = make(map[uuid.UUID][]string)
 
-func AppendToTrackList(uid uuid.UUID) {
+func AppendToTrackList(uid uuid.UUID, gopher_id int) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Recovered in AppendToTrackList", r)
 		}
 	}()
-	TrackList[uid] = append(TrackList[uid], "done")
-	fmt.Println("AppendToTrackList : ", TrackList[uid])
+	TrackList[uid] = append(TrackList[uid], gopher_id)
+
 }
 
 //ctx context.Context, w http.ResponseWriter, r *http.Request
@@ -63,7 +64,7 @@ func UploadContactsToCampaignAndAttachSchedule(ctx context.Context, res http.Res
 	}()
 	res.Header().Set("Content-Type", "application/json")
 	if req.Method != "POST" {
-		fmt.Println("405")
+		fmt.Println("UploadContactsToCampaignAndAttachSchedule - 405")
 		http.Error(res, http.StatusText(405), 405)
 		return
 	}
@@ -72,7 +73,7 @@ func UploadContactsToCampaignAndAttachSchedule(ctx context.Context, res http.Res
 		fmt.Println("Recovered in UploadContactsToCampaignAndAttachSchedule")
 	}
 
-	var gophers = 1000
+	var gophers = 100
 
 	fmt.Println("------------------ UploadContactsToCampaignAndAttachSchedule ------------------")
 	uploadData := UploadData{}
@@ -84,18 +85,13 @@ func UploadContactsToCampaignAndAttachSchedule(ctx context.Context, res http.Res
 		return
 	}
 
-	fmt.Println("Upload Data : ", uploadData)
+	//fmt.Println("Upload Data : ", uploadData)
 	entries := len(uploadData.Contacts)
 	page := entries / gophers
 
 	u1 := uuid.NewV4()
 	fmt.Printf("UUIDv4: %s\n", u1)
-	TrackList[u1] = []string{}
-	WorkersCount[u1] = page
-
-	if page == 0 {
-		WorkersCount[u1] = 1
-	}
+	TrackList[u1] = []int{}
 
 	fmt.Println("page Count : ", page)
 	if 1 >= page {
@@ -115,15 +111,17 @@ func UploadContactsToCampaignAndAttachSchedule(ctx context.Context, res http.Res
 		j = j + page
 	}
 
-	uploadData.TrackerId = u1
-	outgoingJSON, err := json.Marshal(uploadData)
+	reply := UploadData{}
+	reply.TrackerId = u1
+	outgoingJSON, err := json.Marshal(reply)
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	res.WriteHeader(http.StatusCreated)
-	fmt.Fprint(res, string(outgoingJSON))
+	fmt.Fprint(res, "{ \"Data\": "+string(outgoingJSON)+",\"IsSuccess\":\"true\"}")
 	fmt.Println("------------------ UploadContactsToCampaignAndAttachSchedule. end ------------------", u1)
 }
 
@@ -135,9 +133,7 @@ func SaveToDb(gopher_id int, contacts []string, uid uuid.UUID, data UploadData, 
 	}()
 
 	fmt.Print("Gopher Id : ", gopher_id)
-	fmt.Println("  contacts : ", contacts)
-
-	db.SetMaxOpenConns(gophers)
+	//fmt.Println("  contacts : ", contacts)
 
 	// create string to pass
 	var sStmt string = "WITH i AS (INSERT INTO \"DB_CAMP_ContactInfos\"(\"ContactId\", \"CategoryID\", \"TenantId\", \"CompanyId\",\"createdAt\" ,\"updatedAt\" ) VALUES ($1, $2, $3, $4,now(),now()) RETURNING \"CamContactId\") INSERT INTO \"DB_CAMP_ContactSchedules\"(\"CampaignId\", \"CamScheduleId\", \"ExtraData\",\"createdAt\" ,\"updatedAt\", \"CamContactId\")    VALUES ($5, $6, $7,now(),now(), (SELECT \"CamContactId\" FROM i))" // "WITH i AS (INSERT INTO tb1a (t) VALUES ($1) RETURNING id) INSERT INTO tb1b (t)SELECT id FROM i "
@@ -154,10 +150,11 @@ func SaveToDb(gopher_id int, contacts []string, uid uuid.UUID, data UploadData, 
 			log.Print(err)
 			errorList[uid] = append(errorList[uid], contacts[i])
 		}
+		fmt.Printf("contact : %s Save... [%d : %d] \n", contacts[i], gopher_id, i)
 		defer stmt.Close()
 	}
 
-	AppendToTrackList(uid)
+	AppendToTrackList(uid, gopher_id)
 }
 
 //---------------------Assing Exssiting Numbers To Campaign--------------------------\\
@@ -170,7 +167,7 @@ func AssingExssitingNumbersToCampaign(ctx context.Context, res http.ResponseWrit
 
 	res.Header().Set("Content-Type", "application/json")
 	if req.Method != "POST" {
-		fmt.Println("405")
+		fmt.Println("AssingExssitingNumbersToCampaign - 405")
 		http.Error(res, http.StatusText(405), 405)
 		return
 	}
@@ -181,34 +178,34 @@ func AssingExssitingNumbersToCampaign(ctx context.Context, res http.ResponseWrit
 	vars := mux.Vars(req)
 
 	campaignId := vars["CampaignId"]
+	CategoryID := vars["CategoryID"]
 
 	existingData := new(ExistingData)
 	decoder := json.NewDecoder(req.Body)
 	error := decoder.Decode(&existingData)
 	if error != nil {
-		log.Println(error.Error())
+		log.Println("req.Body : ", error.Error())
 		http.Error(res, error.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	db.SetMaxOpenConns(1)
+	fmt.Println("req.Body : ", decoder)
 
 	// create string to pass
 	var sStmt string = "INSERT INTO \"DB_CAMP_ContactSchedules\"(\"CampaignId\", \"CamScheduleId\", \"CamContactId\", \"ExtraData\",\"createdAt\", \"updatedAt\") SELECT $1, $2,\"CamContactId\" , $3,now(),now() FROM \"DB_CAMP_ContactInfos\" WHERE  \"CategoryID\"=$4"
 
 	//"INSERT INTO \"DB_CAMP_ContactSchedules\"(\"CampaignId\", \"CamScheduleId\", \"CamContactId\", \"ExtraData\",\"createdAt\", \"updatedAt\") SELECT  " + CampaignId + ", " + existingData.CamScheduleId + ", 'CamContactId', " + existingData.extraData + ",now(),now() FROM \"DB_CAMP_ContactInfos\" WHERE  \"CategoryID\"=" + existingData.CategoryID
 
-	msg := "Process Complete."
+	msg := "{ \"msg\":\"Process Complete.\",\"IsSuccess\":\"true\"}"
 	stmt, err := db.Prepare(sStmt)
 	if err != nil {
 		log.Panic(err)
-		msg = "Error"
+		msg = "{ \"msg\":\"Error.\",\"IsSuccess\":\"false\"}"
 	}
 
 	res.WriteHeader(http.StatusCreated)
-	reply, err := stmt.Exec(campaignId, existingData.CamScheduleId, existingData.ExtraData, existingData.CategoryID)
+	reply, err := stmt.Exec(campaignId, existingData.CamScheduleId, existingData.ExtraData, CategoryID)
 	if err != nil || reply == nil {
-		msg = "Error"
+		msg = "{ \"msg\":\"Error.\",\"IsSuccess\":\"false\"}"
 		fmt.Fprint(res, err.Error())
 		log.Panic(err)
 	}
@@ -229,18 +226,17 @@ func GetTrackingInfo(ctx context.Context, res http.ResponseWriter, req *http.Req
 
 	res.Header().Set("Content-Type", "application/json")
 	if req.Method != "GET" {
-		fmt.Println("405")
+		fmt.Println("GetTrackingInfo - 405")
 		http.Error(res, http.StatusText(405), 405)
 		return
 	}
 
 	fmt.Println("------------- Tracking Info -----------------")
-	fmt.Println(" workerCount : ", WorkersCount)
 	fmt.Println(" TrackList : ", TrackList)
 	fmt.Println(" errorList : ", errorList)
 	fmt.Println("------------------------------")
 	res.WriteHeader(http.StatusCreated)
-	fmt.Fprint(res, "{\"msg\": \"Done\"}")
+	fmt.Fprint(res, "{ \"msg\":\"Error.\",\"IsSuccess\":\"true\"}")
 
 }
 
@@ -252,17 +248,16 @@ func RemoveCompleteProcess(ctx context.Context, res http.ResponseWriter, req *ht
 	}()
 	res.Header().Set("Content-Type", "application/json")
 	if req.Method != "POST" {
-		fmt.Println("405")
+		fmt.Println("RemoveCompleteProcess - 405")
 		http.Error(res, http.StatusText(405), 405)
 		return
 	}
 	list := []uuid.UUID{}
-	for index, element := range WorkersCount {
+	for index, element := range TrackList {
 		fmt.Println("index", index)
 		fmt.Println("element", element)
 
-		if WorkersCount[index] == len(TrackList[index]) {
-			delete(WorkersCount, index)
+		if 100 == len(TrackList[index]) {
 			delete(TrackList, index)
 			delete(errorList, index)
 			list = append(list, index)
@@ -276,7 +271,7 @@ func RemoveCompleteProcess(ctx context.Context, res http.ResponseWriter, req *ht
 		return
 	}
 	res.WriteHeader(http.StatusCreated)
-	fmt.Fprint(res, string(outgoingJSON))
+	fmt.Fprint(res, "{ \"msg\":"+string(outgoingJSON)+",\"IsSuccess\":\"true\"}")
 }
 
 func TrackNumberUpload(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -287,7 +282,7 @@ func TrackNumberUpload(ctx context.Context, res http.ResponseWriter, req *http.R
 	}()
 	res.Header().Set("Content-Type", "application/json")
 	if req.Method != "GET" {
-		fmt.Println("405")
+		fmt.Println("TrackNumberUpload -405")
 		http.Error(res, http.StatusText(405), 405)
 		return
 	}
@@ -298,22 +293,25 @@ func TrackNumberUpload(ctx context.Context, res http.ResponseWriter, req *http.R
 		fmt.Println("Something gone wrong: %s", err)
 	}
 
-	workerCount := WorkersCount[trackerId]
 	trackList := TrackList[trackerId]
 
-	trackInfo := TrackInfo{}
+	trackInfo := new(TrackInfo)
 	trackInfo.Message = "Process Complete."
 	trackInfo.ErrorList = errorList[trackerId]
-	if workerCount == len(trackList) {
-		delete(WorkersCount, trackerId)
+
+	if 100 == len(trackList) {
 		delete(TrackList, trackerId)
 		delete(errorList, trackerId)
+	} else if 0 == len(trackList) {
+		trackInfo.Message = "Invalid Track ID or Complete Process."
+		if len(errorList[trackerId]) > 0 {
+			trackInfo.Message = "Try again few minutes."
+		}
 	} else {
-		trackInfo.Message = "Invalid Track ID or Incomplete Process."
-
+		trackInfo.Message = "Incomplete Process."
 	}
 	fmt.Println("------------- Track Number Upload -----------------", trackerId)
-	fmt.Print(" workerCount : ", WorkersCount[trackerId])
+
 	fmt.Print(" TrackList : ", TrackList[trackerId])
 	fmt.Println(" errorList : ", errorList[trackerId])
 	fmt.Println(" trackInfo : ", trackInfo)
@@ -327,6 +325,6 @@ func TrackNumberUpload(ctx context.Context, res http.ResponseWriter, req *http.R
 		return
 	}
 	res.WriteHeader(http.StatusCreated)
-	fmt.Fprint(res, string(outgoingJSON))
 
+	fmt.Fprint(res, "{ \"msg\":"+string(outgoingJSON)+",\"IsSuccess\":\"true\"}")
 }
