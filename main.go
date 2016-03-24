@@ -31,19 +31,23 @@ type HttpRouter struct {
 }
 
 func main() {
-	fmt.Println("starting up")
+	fmt.Println("Starting up.................................")
+
+	config := LoadConfiguration()
 
 	var err error
-	db, err = sql.Open("postgres", "host=localhost dbname=dvpdb sslmode=disable user=duouser password=DuoS123")
+
+	db, err = sql.Open("postgres", "host="+config.DB.Host+" dbname="+config.DB.Database+" sslmode=disable user="+config.DB.User+" password="+config.DB.Password)
 	if err != nil {
 		fmt.Println("Error on initializing database connection: %s", err.Error())
 	}
 	if err = db.Ping(); err != nil {
 		return
 	}
+
 	gorest.RegisterService(new(HttpRouter))
 	http.Handle("/", gorest.Handle())
-	http.ListenAndServe(":3268", nil)
+	http.ListenAndServe(":"+config.Host.Port, nil)
 }
 
 func GenerateReply(uid uuid.UUID) []byte {

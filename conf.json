@@ -1,0 +1,22 @@
+{
+    "DB": {
+        "Type": "postgres",
+        "User": "duo",
+        "Password": "DuoS123",
+        "Port": "5432",
+        "Host": "localhost",
+        "Database": "dvpdb"
+    },
+    "Host": {
+        "Domain": "domain",
+        "Port": "3268",
+        "Version": "6.0",
+        "Lostpath": "/DVP/API/6.0/CampaignManager/NumberUpload",
+        "Logfilepath": ""
+    },
+    "Security": {
+        "Ip": "45.55.142.207",
+        "Port": "6379",
+		"AccessToken" : "hhj"
+    }
+}
