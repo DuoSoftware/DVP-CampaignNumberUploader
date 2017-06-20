@@ -50,7 +50,7 @@ func GetDirPath() string {
 }
 
 func LoadDefaultConfig() Configuration {
-	confPath := filepath.Join("I:\\Duo Projects\\Go\\src\\DVP-CampaignNoUploader", "conf.json")
+	confPath := filepath.Join("E:\\DuoProject\\Service\\GO-Projects\\src\\DVP-CampaignNumberUploader", "conf.json")
 	fmt.Println("GetDefaultConfig config path: ", confPath)
 	content, operr := ioutil.ReadFile(confPath)
 	if operr != nil {

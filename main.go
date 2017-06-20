@@ -1,7 +1,7 @@
 package main
 
 import (
-	"DVP-CampaignNoUploader/models"
+	"DVP-CampaignNumberUploader/models"
 	"database/sql"
 	"encoding/json"
 	"fmt"
